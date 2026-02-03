@@ -1,0 +1,6 @@
+ Case Management – Case Summary
+🔍 Purpose
+The Case Summary screen gives a complete overview of a case. It's where a worker can view the most important details about a case in one place. This includes the client involved, case type, active programs, and linked entities like parents or agencies.
+
+📌 Where It’s Used
+After searching from the Case Management Landing Page, the worker clicks on a result to enter the Case Summary screen.

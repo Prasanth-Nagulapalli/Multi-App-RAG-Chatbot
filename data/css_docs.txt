@@ -1,0 +1,126 @@
+# CSS System – Master Reference
+This file consolidates high-value information the chatbot can use to answer questions.  
+(Feel free to break it into multiple .txt/.md files later.)
+
+-----------------------------------------------------------
+SECTION 1  │ System Overview
+-----------------------------------------------------------
+The **Child Support Services (CSS)** system is a web platform used by county workers
+to register cases, determine eligibility for public-assistance programs, and generate
+client correspondence.
+
+### Core Modules
+| Code | Module Name          | Purpose                                        |
+|------|----------------------|------------------------------------------------|
+| INTK | Case Intake          | Register new cases, add household members      |
+| ELIG | Eligibility          | Run benefit eligibility & budgets              |
+| COMP | Correspondence       | Generate letters, notices, email reminders     |
+| PAYM | Payments             | Issue benefits, track disbursements            |
+| ADMN | Administration       | Manage users, roles, code tables, batch jobs   |
+
+### Supported Benefit Programs
+- SNAP – Supplemental Nutrition Assistance Program  
+- TANF – Temporary Assistance for Needy Families  
+- GA   – General Assistance  
+
+### Case Status Values
+`NEW` | Case created, not yet approved  
+`ACTIVE` | Eligible and receiving benefits  
+`SUSPENDED` | Benefits temporarily halted (verification needed)  
+`CLOSED` | Case ended; no further benefits  
+
+-----------------------------------------------------------
+SECTION 2  │ Key User Roles & Permissions
+-----------------------------------------------------------
+| Role Code      | Can Create Case | Run Eligibility | Approve Overrides | Manage Users |
+|----------------|-----------------|-----------------|-------------------|--------------|
+| INTAKE_WORKER  | ✔️              | ✖️              | ✖️                | ✖️           |
+| ELIG_WORKER    | ✔️              | ✔️              | ✖️                | ✖️           |
+| SUPERVISOR     | ✔️              | ✔️              | ✔️                | ✖️           |
+| ADMIN          | ✔️              | ✔️              | ✔️                | ✔️           |
+
+Sessions time-out after **30 minutes** of inactivity. Single Sign-On (SSO) is enforced.
+
+-----------------------------------------------------------
+SECTION 3  │ Step-by-Step Procedures
+-----------------------------------------------------------
+
+## 3.1 – Add a Household Member
+1. Navigate to **Case → Members**.  
+2. Click **Add Member**.  
+3. Enter required fields: *First Name, Last Name, Date of Birth, SSN, Relationship*.  
+4. Click **Save**.  
+5. Run **Re-evaluate Eligibility** so new member data updates benefits.
+
+**Validation Rules**
+- SSN must be unique across all CSS cases.  
+- Members under 18 require at least one parent/guardian in the same case.
+
+## 3.2 – Close a Case
+1. Go to **Case → Summary**.  
+2. Choose **Close Case** and select a closure reason *(e.g., Client Moved Out of State)*.  
+3. The system sets status to `CLOSED` and schedules the **Close Case Notice** batch.
+
+-----------------------------------------------------------
+SECTION 4  │ Frequently Asked Questions
+-----------------------------------------------------------
+
+**Q1  How do I reset a user’s password?**  
+> Only **ADMIN** users can do this. Navigate to **Admin → User Management**, select the user, and click **Reset Password**.
+
+**Q2  Can I delete a case?**  
+> No. Cases can only be **CLOSED**, never physically deleted. Contact the help desk for data-privacy exceptions.
+
+**Q3  Which reports show pending verifications?**  
+> Use the **Eligibility Verification Dashboard** under **Reports → Eligibility**.
+
+-----------------------------------------------------------
+SECTION 5  │ API Snippets (Developer Reference)
+-----------------------------------------------------------
+
+### 5.1  GET /api/cases/{caseId}
+Returns case header, members, and current eligibility results.
+
+**Request**
+
+
+GET /api/cases/CASE-12345
+
+pgsql
+Copy
+Edit
+**Response**
+```json
+{
+  "caseId": "CASE-12345",
+  "status": "ACTIVE",
+  "primaryApplicant": "PRS-6789",
+  "programs": ["SNAP", "TANF"],
+  "members": [
+    {"personId": "PRS-6789", "role": "Head"},
+    {"personId": "PRS-6790", "role": "Spouse"}
+  ]
+}
+5.2 POST /api/cases/{caseId}/members
+Adds a new household member.
+
+Required JSON Body
+
+json
+Copy
+Edit
+{
+  "firstName": "Maria",
+  "lastName": "Lopez",
+  "dob": "2012-04-17",
+  "ssn": "999-12-3456",
+  "relationship": "Daughter"
+}
+SECTION 6 │ Glossary
+IPV – Intentional Program Violation
+
+EDBC – Eligibility Determination & Benefit Calculation
+
+RFI – Request For Information (verification notice)
+
+CBO – Community-Based Organization

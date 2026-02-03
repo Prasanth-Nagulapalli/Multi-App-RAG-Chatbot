@@ -1,0 +1,85 @@
+# Case Management – Landing Page
+
+## Purpose
+The Landing Page is the entry screen for Case Management.  
+It lets a worker:
+1. Search for an existing case by Case ID or Client Name.
+2. View a “Recently Viewed” list (max 10 items).
+3. Navigate to Case Summary, Case Notes, Financials, Parentage, etc.
+
+---
+
+## React File Map
+| File                                         | Role |
+|----------------------------------------------|------|
+| `LandingPage/index.tsx`                      | Main page component – orchestrates search + recent list |
+| `LandingPage/CaseSearch.tsx`                 | Search form (Case ID / Client name, pagination) |
+| `LandingPage/RecentlyViewed.tsx`             | List component showing the last 10 cases opened by current user |
+| `LandingPage/filterConfig.ts`                | Column configs & default filter definitions |
+| `LandingPage/mockData.ts`                    | Demo data used in storybook / local dev |
+
+---
+
+## Component Details
+
+### `LandingPage/index.tsx`
+```tsx
+function LandingPage() {
+  const [searchParams, setSearchParams] = useState<CaseSearchParams>();
+  const { data, isLoading } = useCaseSearch(searchParams);   // 🔗 API call
+  const recent = useRecentlyViewed();                       // ↶ localStorage
+  …
+}
+```
+- **State**
+  - `searchParams`: `{ caseId?: string; clientName?: string; page: number }`
+  - `recent`: `CaseSummary[]` (fetched from localStorage key `recent_cases`)
+- **Hooks**
+  - `useCaseSearch` → GET `/api/cases/search`
+  - `useRecentlyViewed` → custom hook wraps `localStorage`
+- **Handlers**
+  - `onSearchSubmit` sets `searchParams`
+  - `onCaseOpen(caseId)` pushes ID to `recent` and navigates `"/case-summary/:caseId"`
+
+### `CaseSearch.tsx`
+- Renders **Case ID** & **Client Name** inputs + a Search button.
+- Validation: at least one field required.
+
+### `RecentlyViewed.tsx`
+- Pulls recent array from context/hook.
+- Displays **Case ID**, **Client name**, **Status**.
+- Click navigates to CaseSummary.
+
+---
+
+## Business Rules
+| Rule ID | Description |
+|---------|-------------|
+| LP-001  | A maximum of **10 recent items** are stored per user. Oldest item is dropped when new item added. |
+| LP-002  | Search must contain Case ID _or_ Client Name (client-side validation). |
+| LP-003  | Search results are paginated (page size = 20). |
+
+---
+
+## API Contracts
+| Endpoint | Method | Params | Returns |
+|----------|--------|--------|---------|
+| `/api/cases/search` | GET | `caseId`, `clientName`, `page`, `size` | `CaseSearchResponse` with `total`, `items[]` |
+| – Response `CaseSearchItem` | – | – | `{ caseId, clientName, status, createdDate }` |
+
+---
+
+## Workflow (User Perspective)
+1. Worker lands on **Case Management › Landing Page**.
+2. Enters a **Case ID** or **Client Name** → clicks **Search**.
+3. Result table loads; worker clicks a row.
+4. App navigates to **Case Summary** and pushes the case into **Recently Viewed**.
+5. Back on Landing Page, the case appears in the Recent list (top).
+
+---
+
+## Open Questions / TODO
+- Confirm maximum recent list length (10 vs configurable?).
+- Confirm server pagination defaults (`size=20`).
+- Add loading/error states to RecentlyViewed if backend call planned.
+
