@@ -5,6 +5,7 @@ from langchain.chains import RetrievalQA
 
 from src.config import CHROMA_DIR, EMBED_MODEL, CHAT_MODEL, TOP_K, OPENAI_API_KEY
 
+
 def create_qa_chain():
     # 1) Load persisted vector DB (fast)
     embedding = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
