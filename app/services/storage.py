@@ -97,8 +97,8 @@ def delete_app_storage(app_id: str):
 
 def get_supported_extensions() -> List[str]:
     """Get list of supported file extensions."""
-    # MVP: txt and md. Structure allows easy addition of pdf, docx later.
-    return [".txt", ".md"]
+    # Supported: plain text, markdown, and PDFs.
+    return [".txt", ".md", ".pdf"]
 
 
 def is_supported_file(filename: str) -> bool:

@@ -134,7 +134,7 @@ Invoke-WebRequest -Uri "http://localhost:8000/api/chat" -Method POST -Body $chat
 | GET | `/api/apps` | List all apps |
 | GET | `/api/apps/{appId}` | Get app details |
 | DELETE | `/api/apps/{appId}` | Delete app |
-| POST | `/api/apps/{appId}/files` | Upload files (.txt, .md) |
+| POST | `/api/apps/{appId}/files` | Upload files (.txt, .md, .pdf) |
 | GET | `/api/apps/{appId}/files` | List uploaded files |
 | POST | `/api/apps/{appId}/train` | Train/index the app |
 | POST | `/api/chat` | Send chat message |

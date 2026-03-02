@@ -6,10 +6,18 @@ import os
 from typing import List, Optional
 from dotenv import load_dotenv
 
-# Load environment variables
+# Load environment variables (.env) at import, but also re-check env at runtime.
 load_dotenv()
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+def _get_openai_api_key() -> str:
+    """
+    Read the OpenAI API key from environment at runtime.
+    This avoids 'stale' values if the env var is set after process start.
+    """
+    # Re-load .env if present; does not override existing env vars by default.
+    load_dotenv()
+    return (os.getenv("OPENAI_API_KEY") or "").strip()
 
 
 class MockLLM:
@@ -41,13 +49,14 @@ def get_llm():
     Get the appropriate LLM based on configuration.
     Returns ChatOpenAI if API key exists, otherwise MockLLM.
     """
-    if OPENAI_API_KEY:
+    api_key = _get_openai_api_key()
+    if api_key:
         print("[LLM] Using OpenAI ChatGPT")
         from langchain_community.chat_models import ChatOpenAI
         return ChatOpenAI(
             model_name="gpt-3.5-turbo",
             temperature=0,
-            openai_api_key=OPENAI_API_KEY
+            openai_api_key=api_key
         )
     else:
         print("[WARN] OPENAI_API_KEY not found. Using mock LLM fallback.")
@@ -56,5 +65,10 @@ def get_llm():
 
 def has_openai_key() -> bool:
     """Check if OpenAI API key is configured."""
-    return bool(OPENAI_API_KEY)
+    return bool(_get_openai_api_key())
+
+
+def get_llm_mode() -> str:
+    """Return the current LLM mode: 'openai' or 'mock'."""
+    return "openai" if has_openai_key() else "mock"
 
