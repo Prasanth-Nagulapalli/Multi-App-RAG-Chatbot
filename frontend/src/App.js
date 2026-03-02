@@ -404,6 +404,7 @@ function App() {
           maxWidth="sm"
           fullWidth
         >
+          
           <DialogTitle>
             {selectedApp?.name} - Files
           </DialogTitle>
@@ -424,7 +425,7 @@ function App() {
                   startIcon={<UploadIcon />}
                   fullWidth
                 >
-                  
+
                   Upload Files (.txt, .md, .pdf)
                 </Button>
               </label>
