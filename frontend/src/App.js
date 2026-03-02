@@ -410,7 +410,7 @@ function App() {
           <DialogContent>
             <Box sx={{ mb: 2 }}>
               <input
-                accept=".txt,.md"
+                accept=".txt,.md,.pdf"
                 style={{ display: 'none' }}
                 id="file-upload"
                 multiple
@@ -424,7 +424,7 @@ function App() {
                   startIcon={<UploadIcon />}
                   fullWidth
                 >
-                  Upload Files (.txt, .md)
+                  Upload Files (.txt, .md, .pdf)
                 </Button>
               </label>
             </Box>

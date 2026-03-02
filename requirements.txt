@@ -8,9 +8,12 @@ uvicorn[standard]==0.27.0
 python-dotenv==1.0.0
 
 # LangChain & AI
-langchain==0.1.0
-langchain-community==0.0.13
+# Keep LangChain packages in a compatible set (Python 3.12 friendly).
+langchain==0.1.20
+langchain-community==0.0.38
+langchain-core==0.1.53
 langchain-text-splitters==0.0.1
+langsmith==0.1.147
 
 # Vector Store
 chromadb==0.4.22
@@ -22,7 +25,7 @@ sentence-transformers==2.2.2
 openai==1.10.0
 
 # Data Validation
-pydantic==2.5.3
+pydantic==2.12.5
 
 # HTTP Client (for future integrations)
 httpx==0.26.0
@@ -33,3 +36,9 @@ python-multipart==0.0.6
 # Utilities
 aiofiles==23.2.1
 
+# PDF support (for training/indexing PDFs)
+pypdf==4.1.0
+
+# Chroma pulls in `build>=1.0.3`; newer build versions require packaging>=24,
+# but langchain-core 0.1.x requires packaging<24. Pin build to avoid conflicts.
+build==1.0.3

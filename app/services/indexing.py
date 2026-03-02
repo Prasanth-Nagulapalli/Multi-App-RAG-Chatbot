@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 from typing import List, Tuple
 
-from langchain_community.document_loaders import TextLoader
+from langchain_community.document_loaders import TextLoader, PyPDFLoader
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -38,6 +38,12 @@ def load_documents(app_id: str) -> List:
                 docs = loader.load()
                 all_docs.extend(docs)
                 print(f"[LOAD] Loaded: {os.path.basename(file_path)}")
+            elif ext == ".pdf":
+                # Requires `pypdf` (see requirements.txt)
+                loader = PyPDFLoader(file_path)
+                docs = loader.load()
+                all_docs.extend(docs)
+                print(f"[LOAD] Loaded PDF: {os.path.basename(file_path)} ({len(docs)} page(s))")
             else:
                 print(f"[SKIP] Skipping unsupported file: {os.path.basename(file_path)}")
                 
@@ -54,6 +60,8 @@ def chunk_documents(docs: List) -> List:
         chunk_overlap=CHUNK_OVERLAP
     )
     chunks = splitter.split_documents(docs)
+    # Drop empty chunks (can happen with PDFs that have no extractable text)
+    chunks = [c for c in chunks if getattr(c, "page_content", "").strip()]
     print(f"[CHUNK] Created {len(chunks)} chunks from {len(docs)} documents")
     return chunks
 
@@ -74,11 +82,18 @@ def build_index(app_id: str) -> Tuple[int, int]:
         
         # Load documents
         docs = load_documents(app_id)
+        # Drop docs with no extractable text (common with scanned/image-only PDFs)
+        docs = [d for d in docs if getattr(d, "page_content", "").strip()]
         if not docs:
-            raise ValueError("No documents could be loaded")
+            raise ValueError(
+                "No text could be extracted from the uploaded documents. "
+                "If you're indexing scanned/image-only PDFs, run OCR first and upload the OCR'd text/PDF."
+            )
         
         # Chunk documents
         chunks = chunk_documents(docs)
+        if not chunks:
+            raise ValueError("No text chunks could be created from the uploaded documents.")
         
         # Create embeddings
         print(f"[EMBED] Creating embeddings with {EMBED_MODEL}...")
