@@ -5,6 +5,8 @@ Handles file paths, saving, and hashing.
 import os
 import hashlib
 import shutil
+import time
+import gc
 from typing import List
 
 # Base storage directory
@@ -82,8 +84,28 @@ def clear_chroma_dir(app_id: str):
     """Clear the Chroma DB directory (for rebuilding index)."""
     chroma_dir = get_chroma_dir(app_id)
     if os.path.exists(chroma_dir):
-        shutil.rmtree(chroma_dir)
-        print(f"[DEL] Cleared Chroma DB for app: {app_id}")
+        # Chroma keeps shared clients; clear cache first to avoid Windows file locks.
+        try:
+            from chromadb.api.client import SharedSystemClient
+            SharedSystemClient.clear_system_cache()
+        except Exception:
+            pass
+
+        # Retry a few times in case locks are released asynchronously.
+        last_err = None
+        for _ in range(5):
+            try:
+                gc.collect()
+                shutil.rmtree(chroma_dir)
+                print(f"[DEL] Cleared Chroma DB for app: {app_id}")
+                last_err = None
+                break
+            except PermissionError as e:
+                last_err = e
+                time.sleep(0.25)
+
+        if last_err is not None:
+            raise last_err
     os.makedirs(chroma_dir, exist_ok=True)
 
 

@@ -18,6 +18,8 @@ from app.db import update_app_status, get_files_for_app
 EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 CHUNK_SIZE = 800
 CHUNK_OVERLAP = 120
+DEFAULT_COLLECTION = "langchain"
+ACTIVE_COLLECTION_FILE = "active_collection.txt"
 
 
 def load_documents(app_id: str) -> List:
@@ -66,6 +68,45 @@ def chunk_documents(docs: List) -> List:
     return chunks
 
 
+def _active_collection_path(app_id: str) -> str:
+    return os.path.join(get_chroma_dir(app_id), ACTIVE_COLLECTION_FILE)
+
+
+def get_active_collection_name(app_id: str) -> str:
+    """Return currently active collection for an app."""
+    path = _active_collection_path(app_id)
+    if not os.path.exists(path):
+        return DEFAULT_COLLECTION
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            name = f.read().strip()
+        return name or DEFAULT_COLLECTION
+    except Exception:
+        return DEFAULT_COLLECTION
+
+
+def _set_active_collection_name(app_id: str, collection_name: str) -> None:
+    os.makedirs(get_chroma_dir(app_id), exist_ok=True)
+    with open(_active_collection_path(app_id), "w", encoding="utf-8") as f:
+        f.write(collection_name)
+
+
+def release_vectordb(vectordb) -> None:
+    """Best-effort release of Chroma resources (important on Windows file locks)."""
+    if vectordb is None:
+        return
+    try:
+        # Persist before shutdown when supported.
+        if hasattr(vectordb, "persist"):
+            vectordb.persist()
+    except Exception:
+        pass
+    try:
+        del vectordb
+    except Exception:
+        pass
+
+
 def build_index(app_id: str) -> Tuple[int, int]:
     """
     Build/rebuild vector index for an app.
@@ -73,12 +114,15 @@ def build_index(app_id: str) -> Tuple[int, int]:
     """
     print(f"\n[INDEX] Starting indexing for app: {app_id}")
     
+    vectordb = None
     try:
         # Update status to INDEXING
         update_app_status(app_id, "INDEXING")
         
-        # Clear existing Chroma DB (clean rebuild)
-        clear_chroma_dir(app_id)
+        # Keep existing files and switch to a fresh collection each rebuild.
+        # This avoids Windows file-lock failures while still serving only latest index.
+        chroma_dir = get_chroma_dir(app_id)
+        os.makedirs(chroma_dir, exist_ok=True)
         
         # Load documents
         docs = load_documents(app_id)
@@ -100,12 +144,14 @@ def build_index(app_id: str) -> Tuple[int, int]:
         embedding = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
         
         # Build and persist Chroma DB
-        chroma_dir = get_chroma_dir(app_id)
+        collection_name = f"{app_id}_{int(datetime.utcnow().timestamp())}"
         vectordb = Chroma.from_documents(
             documents=chunks,
             embedding=embedding,
+            collection_name=collection_name,
             persist_directory=chroma_dir
         )
+        _set_active_collection_name(app_id, collection_name)
         
         # Update status to READY
         now = datetime.utcnow().isoformat()
@@ -121,6 +167,9 @@ def build_index(app_id: str) -> Tuple[int, int]:
         update_app_status(app_id, "FAILED")
         print(f"[ERR] Indexing failed for app {app_id}: {e}")
         raise
+    finally:
+        # Release any open Chroma handles so retraining works reliably on Windows.
+        release_vectordb(vectordb)
 
 
 def index_exists(app_id: str) -> bool:

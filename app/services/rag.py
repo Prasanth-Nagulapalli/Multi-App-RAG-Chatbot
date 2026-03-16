@@ -12,7 +12,12 @@ from langchain.prompts import PromptTemplate
 
 from app.services.storage import get_chroma_dir
 from app.services.llm import get_llm, has_openai_key, get_llm_mode
-from app.services.indexing import index_exists, EMBED_MODEL
+from app.services.indexing import (
+    index_exists,
+    get_active_collection_name,
+    release_vectordb,
+    EMBED_MODEL,
+)
 from app.db import get_app
 
 # Configuration
@@ -75,8 +80,10 @@ def load_vector_db(app_id: str):
         raise ValueError(f"No index found for app '{app_id}'. Please train first.")
     
     embedding = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
+    collection_name = get_active_collection_name(app_id)
     vectordb = Chroma(
         persist_directory=chroma_dir,
+        collection_name=collection_name,
         embedding_function=embedding
     )
     
@@ -136,6 +143,7 @@ def chat(app_id: str, message: str) -> Dict[str, Any]:
             "sources": []
         }
     
+    vectordb = None
     try:
         # Load vector DB
         vectordb = load_vector_db(app_id)
@@ -233,4 +241,7 @@ def chat(app_id: str, message: str) -> Dict[str, Any]:
             "answer": None,
             "sources": []
         }
+    finally:
+        # Ensure no lingering file locks (Windows) after retrieval.
+        release_vectordb(vectordb)
 
